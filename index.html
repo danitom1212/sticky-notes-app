@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sticky Notes with Firebase</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.5.2/animate.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+    <!-- Firebase App (the core Firebase SDK) -->
+    <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-app.js"></script>
+    <!-- Firebase Firestore -->
+    <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-firestore.js"></script>
+    <!-- Firebase Authentication -->
+    <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-auth.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        header {
+            background-color: #6200ea;
+            color: white;
+            padding: 10px 0;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        
+        main {
+            width: 90%;
+            max-width: 900px;
+            margin: 20px 0;
+        }
+        
+        .notes-section {
+            margin-bottom: 20px;
+        }
+        
+        .notes-container,
+        .saved-container,
+        .garbage-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .note {
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding: 10px;
+            width: calc(33.333% - 10px);
+            box-sizing: border-box;
+            position: relative;
+            transition: transform 0.3s ease-in-out;
+        }
+        
+        .note input[type="text"],
+        .note textarea {
+            width: 100%;
+            border: none;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 10px;
+            padding: 5px;
+            font-size: 16px;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        
+        .note textarea {
+            resize: none;
+            height: 100px;
+        }
+        
+        .note button {
+            background-color: #6200ea;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .note button:hover {
+            background-color: #3700b3;
+        }
+        
+        .note h3 {
+            margin: 0;
+            font-size: 18px;
+        }
+        
+        .note p {
+            margin: 10px 0 0 0;
+        }
+        
+        .deleted-note {
+            background-color: #e0e0e0;
+            text-decoration: line-through;
+        }
+        
+        .note .delete-btn,
+        .note .save-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: #ff5252;
+        }
+        
+        .note .save-btn {
+            right: 70px;
+            background-color: #4caf50;
+        }
+        
+        button#add-note-btn,
+        button#clear-garbage-btn {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            border-radius: 4px;
+            border: none;
+            background-color: #6200ea;
+            color: white;
+            cursor: pointer;
+        }
+        
+        button#clear-garbage-btn {
+            background-color: #ff5252;
+        }
+        
+        button#add-note-btn:hover,
+        button#clear-garbage-btn:hover {
+            opacity: 0.9;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>Sticky Notes</h1>
+    </header>
+
+    <main>
+        <section class="notes-section">
+            <h2>Active Notes</h2>
+            <div class="notes-container" id="notes-container">
+                <!-- Notes will be added here -->
+            </div>
+            <button id="add-note-btn">Add Note</button>
+        </section>
+
+        <section class="notes-section">
+            <h2>Saved Notes</h2>
+            <div class="saved-container" id="saved-container">
+                <!-- Saved notes will be added here -->
+            </div>
+        </section>
+
+        <section class="notes-section">
+            <h2>Garbage</h2>
+            <div class="garbage-container" id="garbage-container">
+                <!-- Deleted notes will be added here -->
+            </div>
+            <button id="clear-garbage-btn">Clear Garbage</button>
+        </section>
+    </main>
+
+    <script>
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBZqEh6yg_YnsqYjsraKB0gGH6w2mjp_CE",
+            authDomain: "notes-app-81800.firebaseapp.com",
+            projectId: "notes-app-81800",
+            storageBucket: "notes-app-81800.appspot.com",
+            messagingSenderId: "75611687928",
+            appId: "1:75611687928:web:60e5f3ac1720bf9521a40d",
+            measurementId: "G-82Z11JXQT5"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const addNoteBtn = document.getElementById('add-note-btn');
+            const notesContainer = document.getElementById('notes-container');
+            const savedContainer = document.getElementById('saved-container');
+            const garbageContainer = document.getElementById('garbage-container');
+            const clearGarbageBtn = document.getElementById('clear-garbage-btn');
+
+            addNoteBtn.addEventListener('click', addNote);
+            clearGarbageBtn.addEventListener('click', clearGarbage);
+
+            auth.onAuthStateChanged(function(user) {
+                if (user) {
+                    console.log("Signed in as:", user.email);
+                    loadNotes();
+                } else {
+                    window.location.href = 'login.html'; // Redirect to login page
+                }
+            });
+
+            function addNote() {
+                const note = createNoteElement();
+                notesContainer.appendChild(note);
+                note.style.transform = 'scale(0)';
+                setTimeout(() => {
+                    note.style.transform = 'scale(1)';
+                }, 10);
+            }
+
+            function updateNoteSavedStatus(noteId, saved) {
+                db.collection('notes').doc(noteId).update({
+                        saved: saved
+                    })
+                    .then(() => {
+                        console.log('Note saved status updated');
+                        loadNotes();
+                    })
+                    .catch(error => {
+                        console.error('Error updating note saved status: ', error);
+                    });
+            }
+
+            function createNoteElement(title = '', content = '') {
+                const note = document.createElement('div');
+                note.classList.add('note');
+
+                const titleInput = document.createElement('input');
+                titleInput.type = 'text';
+                titleInput.value = title;
+                titleInput.placeholder = 'Title';
+                note.appendChild(titleInput);
+
+                const contentTextarea = document.createElement('textarea');
+                contentTextarea.value = content;
+                contentTextarea.placeholder = 'Write your note here...';
+                note.appendChild(contentTextarea);
+
+                const saveBtn = document.createElement('button');
+                saveBtn.textContent = 'Save';
+                saveBtn.classList.add('save-btn');
+                saveBtn.addEventListener('click', () => saveNoteToFirebase(note));
+                note.appendChild(saveBtn);
+
+                return note;
+            }
+
+            function saveNoteToFirebase(note) {
+                const title = note.querySelector('input').value;
+                const content = note.querySelector('textarea').value;
+
+                if (!title || !content) {
+                    alert('Please enter a title and content for the note.');
+                    return;
+                }
+
+                db.collection('notes').add({
+                        title: title,
+                        content: content,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        userId: auth.currentUser.uid,
+                        saved: true
+                    })
+                    .then((docRef) => {
+                        console.log('Note saved with ID: ', docRef.id);
+                        note.remove();
+                        loadNotes();
+                    })
+                    .catch(error => {
+                        console.error('Error adding note: ', error);
+                    });
+            }
+
+            function createSavedNoteElement(title, content, id, saved = true) {
+                const savedNote = document.createElement('div');
+                savedNote.classList.add('note');
+                savedNote.dataset.id = id;
+
+                const titleElement = document.createElement('h3');
+                titleElement.textContent = title;
+                savedNote.appendChild(titleElement);
+
+                const contentElement = document.createElement('p');
+                contentElement.textContent = content;
+                savedNote.appendChild(contentElement);
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.textContent = 'Delete';
+                deleteBtn.classList.add('delete-btn');
+                deleteBtn.addEventListener('click', () => deleteNoteFromFirebase(id));
+                savedNote.appendChild(deleteBtn);
+
+                if (!saved) {
+                    savedNote.classList.add('deleted-note');
+                }
+
+                return savedNote;
+            }
+
+            function deleteNoteFromFirebase(noteId) {
+                db.collection('notes').doc(noteId).update({
+                        saved: false
+                    })
+                    .then(() => {
+                        console.log('Note moved to garbage');
+                        loadNotes();
+                    })
+                    .catch(error => {
+                        console.error('Error deleting note: ', error);
+                    });
+            }
+
+            function clearGarbage() {
+                db.collection('notes')
+                    .where('userId', '==', auth.currentUser.uid)
+                    .where('saved', '==', false)
+                    .get()
+                    .then(querySnapshot => {
+                        const batch = db.batch();
+                        querySnapshot.forEach(doc => {
+                            batch.delete(doc.ref);
+                        });
+                        return batch.commit();
+                    })
+                    .then(() => {
+                        console.log('Garbage cleared');
+                        loadNotes();
+                    })
+                    .catch(error => {
+                        console.error('Error clearing garbage: ', error);
+                    });
+            }
+
+            function loadNotes() {
+                savedContainer.innerHTML = '';
+                notesContainer.innerHTML = '';
+                garbageContainer.innerHTML = '';
+                db.collection('notes')
+                    .where('userId', '==', auth.currentUser.uid)
+                    .orderBy('createdAt', 'desc')
+                    .get()
+                    .then(querySnapshot => {
+                        console.log('Notes loaded:', querySnapshot.size);
+                        querySnapshot.forEach(doc => {
+                            const data = doc.data();
+                            console.log('Note data:', data);
+                            const note = createSavedNoteElement(data.title, data.content, doc.id, data.saved);
+                            if (data.saved) {
+                                savedContainer.appendChild(note);
+                            } else {
+                                garbageContainer.appendChild(note);
+                            }
+                        });
+                    })
+                    .catch(error => {
+                        console.error('Error loading notes: ', error);
+                    });
+            }
+        });
+    </script>
+</body>
+
+</html>

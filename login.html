@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+    body {
+        font-family: 'Open Sans', sans-serif;
+        background-color: #fafafa;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+    }
+    
+    .login-container {
+        background-color: #fff;
+        border: 1px solid #dbdbdb;
+        border-radius: 3px;
+        width: 350px;
+        padding: 40px;
+        box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+    }
+    
+    h1 {
+        text-align: center;
+        color: #262626;
+        margin-bottom: 30px;
+        font-weight: 600;
+    }
+    
+    input {
+        width: 100%;
+        padding: 10px;
+        margin-bottom: 10px;
+        border: 1px solid #dbdbdb;
+        border-radius: 3px;
+        box-sizing: border-box;
+        font-size: 14px;
+    }
+    
+    button {
+        width: 100%;
+        padding: 10px;
+        background-color: #0095f6;
+        color: white;
+        border: none;
+        border-radius: 3px;
+        font-weight: 600;
+        cursor: pointer;
+        margin-top: 10px;
+    }
+    
+    button:hover {
+        background-color: #0081d6;
+    }
+    
+    .divider {
+        margin: 20px 0;
+        text-align: center;
+        position: relative;
+    }
+    
+    .divider::before {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background-color: #dbdbdb;
+        z-index: 1;
+    }
+    
+    .divider span {
+        background-color: #fff;
+        padding: 0 10px;
+        position: relative;
+        z-index: 2;
+        color: #8e8e8e;
+        font-size: 13px;
+        font-weight: 600;
+    }
+</style>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sticky Notes</title>
+</head>
+
+<body>
+
+    <header>
+        <h1>Sticky Notes</h1>
+        <input type="email" id="email" placeholder="Email">
+        <input type="password" id="password" placeholder="Password">
+        <button id="login-btn">Login</button>
+        <button id="signup-btn">Sign Up</button>
+    </header>
+
+    <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.2/firebase-analytics-compat.js"></script>
+
+    <script>
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBZqEh6yg_YnsqYjsraKB0gGH6w2mjp_CE",
+            authDomain: "notes-app-81800.firebaseapp.com",
+            projectId: "notes-app-81800",
+            storageBucket: "notes-app-81800.appspot.com",
+            messagingSenderId: "75611687928",
+            appId: "1:75611687928:web:60e5f3ac1720bf9521a40d",
+            measurementId: "G-82Z11JXQT5"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        firebase.analytics();
+
+        // DOM elements
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const loginBtn = document.getElementById('login-btn');
+        const signupBtn = document.getElementById('signup-btn');
+
+        // Event listeners for login and signup buttons
+        loginBtn.addEventListener('click', login);
+        signupBtn.addEventListener('click', signup);
+
+        function login() {
+            const email = emailInput.value;
+            const password = passwordInput.value;
+            firebase.auth().signInWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    // התחברות מוצלחת
+                    const user = userCredential.user;
+                    console.log(user);
+
+                    // מעבר לעמוד הבית
+                    window.location.href = 'index.html'; // החלף 'home.html' עם הנתיב לעמוד הבית שלך
+                })
+                .catch((error) => {
+                    const errorCode = error.code;
+                    const errorMessage = error.message;
+                    alert(errorMessage);
+                });
+        }
+
+        function signup() {
+            const email = emailInput.value;
+            const password = passwordInput.value;
+            firebase.auth().createUserWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    // Signed up
+                    const user = userCredential.user;
+                    console.log(user);
+                    // Handle successful signup (e.g., show notes section)
+                })
+                .catch((error) => {
+                    const errorCode = error.code;
+                    const errorMessage = error.message;
+                    alert(errorMessage);
+                });
+        }
+    </script>
+</body>
+
+</html>
